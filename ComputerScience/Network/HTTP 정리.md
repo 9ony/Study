@@ -556,3 +556,195 @@ HTTP/1.0이래로 어떤 1XX 상태 코드들도 정의 되지 않았다.<br>
 클라이언트는 디테일한 코드를 이해를 못하면 큰 범위로 처리한다. (299면 2XX로 처리함)
 
 [HTTP 상태코드 출처](https://ko.wikipedia.org/wiki/HTTP_%EC%83%81%ED%83%9C_%EC%BD%94%EB%93%9C)
+
+## HTTP 헤더
+
+HTTP 헤더는 클라이언트와 서버가 요청 또는 응답으로 부가적인 정보를 전송할 수 있도록 해준다.
+부가적 정보는 요청자,컨텐트 타입,캐싱 등 여러가지가 존재함.
+[HTTP 헤더 관련 링크](https://developer.mozilla.org/ko/docs/Web/HTTP/Headers)
+
+### HTTP 헤더 분류 
+
+__이전 버전 RFC2616__<br>
+
+- General 헤더: 메시지 전체에 적용되는 정보, 예) Connection: close
+- Request 헤더: 요청 정보, 예) User-Agent: Mozilla/5.0 (Macintosh; ..)
+- Response 헤더: 응답 정보, 예) Server: Apache
+- Entity 헤더: 엔티티 바디 정보, 예) Content-Type: text/html, Content-Length: 3423
+
+- HTTP message body
+    - 메시지 본문(message body)은 엔티티 본문(entity body)을 전달하는데 사용
+    - 엔티티 본문은 요청이나 응답에서 전달할 실제 데이터
+    - 엔티티 헤더는 엔티티 본문의 데이터를 해석할 수 있는 정보 제공
+    - 데이터 유형(html, json), 데이터 길이, 압축 정보 등등
+
+### RFC723x 변화
+
+엔티티(Entity)에서 표현(Representation)으로 변경
+표현은 표현 메타데이터(표현과 관련된 헤더) + 표현 데이터(페이로드=메세지 본문)
+
+![image](https://github.com/9ony/9ony/assets/97019540/22a12495-0d0c-4711-9464-d022dcaf0a99)
+
+- 메시지 본문(message body)을 통해 표현 데이터 전달
+- 메시지 본문 = 페이로드(payload)
+- 표현은 요청이나 응답에서 전달할 실제 데이터
+- 표현 헤더는 표현 데이터를 해석할 수 있는 정보 제공
+- 데이터 유형(html, json), 데이터 길이, 압축 정보 등등
+
+✔ 엔티티 -> 표현으로 바뀐걸 볼 수 있다.
+
+### HTTP 헤더 종류
+
+- 표현 헤더<br>
+    클라이언트와 서버간에 송/수신할 때 리소스의 표현 요청<br>
+    - Content-Type: 표현 데이터의 형식 (미디어 타입, 문자 인코딩)<br>
+        ex) text/html; charset=utf-8 , application/json , image/png
+    - Content-Encoding: 표현 데이터의 압축 방식 (표현 데이터를 압축하기 위해 사용) <br>
+        ex) gzip , deflate , identity
+    - Content-Language: 표현 데이터의 자연 언어 (표현 데이터의 자연 언어(한글,영어 등..) 표현)<br>
+        ex) ko , en , en-US
+    - Content-Length: 표현 데이터의 길이 (바이트 단위 & Transfer-Encoding사용 시 사용하면 안됨)<br>
+        ex) Byte 단위 Content-Length: 1021(본문길이)
+
+    ✔ 표현 헤더는 전송,응답 시 둘다 사용할 수 있다!
+
+- 협상 헤더 <br>
+    클라이언트가 선호하는 표현 요청<br>
+    ✔ 협상 헤더는 요청시에 사용하고 서버가 이를 확인하고
+    - Accept: 클라이언트가 선호하는 미디어 타입 전달<br>
+        ex) text/html,application/xml;q=0.9,image/avif,image/webp,image/apng
+    - Accept-Charset: 클라이언트가 선호하는 문자 인코딩<br>
+        ex) utf-8, iso-8859-1;q=0.5, *;q=0.1
+    - Accept-Encoding: 클라이언트가 선호하는 압축 인코딩<br>
+        ex) gzip, deflate, br
+    - Accept-Language: 클라이언트가 선호하는 자연 언어<br>
+        ex) ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
+
+    - __협상 우선순위__<br>
+    __인자 가중치 (q: Quality value)__<br>
+    헤더가 제시하는 속성이 여러 개일 경우, 인자 가중치 q를 함께 줄 수 있고 q는 0~1 사이의 값<br>
+    q 값이 높을수록 해당 속성의 우선순위도 높아진다.<br>
+    ex) `헤더 이름: 헤더값1;q=0.6, 헤더값2;q=0.3, 헤더값3;q0.9` 이라면 헤더 값3이 1순위다<br>
+    해당 헤더의 속성으로 어떤 값이 와도 상관없을 경우 와일드카드 `*` 가능<br> 
+    __구체적인 값__<br>
+    속성이 여러개일 경우 구체적인 값들이 협상에서 우선된다는 특징<br>
+    ex) `Accept: text/plain,text/plain;format=flowed,text/*,*/*` 이라면 `text/plain;format=flowed가 1순위`
+
+    
+
+- 전송 방식 헤더 <br>
+    전송 방식에 대한 정보를 요청<br>
+    - Content-Length , Content-Encoding은 표현 헤더에서 다룸 
+    - Transfer-Encoding : 콘텐츠를 분할해서 전송<br>
+        `Content-Length를 포함 X` (길이를 예측할 수 없기때문)<br>
+        ex) `Transfer-Encoding: chunked`<br>
+        chunk size(16진수) + CRLF(0a0d) + 내용 + CRLF 이런 형태로 데이터 응답<br>
+        > e1 (+CRLF)<br>
+          내용 (+CRLF)  (225 byte)<br>
+          b7 (+CRLF)<br>
+          내용 (+CRLF)  (183 byte)<br>
+          0 (+CRLF)   (끝을 의미)<br> 
+    - Range, Content-Range : 콘텐츠 범위를 전송 해줌<br> 
+        ex) Range : 200-1000 클라이언트가 요청 헤더에 포함 후 요청 <br>
+        Content-Range : 200-1000/6000 (현재 데이터의 범위/전체 크기) 서버 헤더에 포함되어 응답<br>
+
+    > 분할전송(chunk)과 범위전송(Content-Range)은 같은 메커니즘의 전송방식(Transfer-Encoding)이며
+    분할된 내용의 범위를 구체적 인가 아닌가 정도의 차이
+
+- 일반 정보 헤더 <br>
+    일반 정보를 나타내는 요청<br>
+    - From: 유저 에이전트의 이메일 정보  
+        검색 엔진 같은 곳에서 주로 사용 (일반적으로 잘 사용하지 않음)
+    - Referer: 이전 웹 페이지 주소  
+        현재 요청된 페이지의 이전 웹 페이지 주소  
+        Referer를 사용해서 유입 경로 분석 가능  
+        원래 referrer가 맞는데 r이 빠진 오타가 표준이 되어버림  
+    - User-Agent: 유저 에이전트 애플리케이션 정보
+        클라이언트의 애플리케이션 정보(웹 브라우저 정보, 등등)  
+        어떤 종류의 브라우저에서 장애가 발생하는지 파악 가능하다  
+    - Server: 요청을 처리하는 오리진 서버의 소프트웨어 정보
+        Server: Apache/2.2.22(Debian)  
+        오리진 서버이므로 엔드포인트 서버 정보임, 중간에 프록시 서버 등등은 X  
+    - Date: 메시지가 생성된 날짜
+        Date: Fri, 09 Apr 2021 14:41:31 GMT  
+    
+    Form,Referer,User-Agent는 요청시 사용 , Server,Date는 응답시 사용  
+
+- 특별한 정보 헤더  
+    - Host : 요청한 호스트 정보(도메인) 필수헤더이다  
+        하나의 서버가 여러 도메인을 처리할 때 사용  
+        하나의 IP주소에 여러 도메인이 적용되어 있을 때 사용  
+    - Location : 페이지 리다이렉션 주소, 리소스 주소 정보  
+        201(Created): 생성된 리소스 URI  
+        3xx(Redirection): 리다이렉션을 위한 리소스 URI  
+    - Allow : 서버에서 허용 가능한 HTTP 메서드 정보  
+        405 Method Not Allowed 에러를 응답과 같이 Allow : GET,POST 등 지원가능한 메서드 포함  
+    - Retry-After : 유저 에이전트가 다음 요청을 하기까지 기다려야 하는 시간 정보  
+        503 (Service Unavailable): 서비스가 언제까지 불능인지 알려줄 수 있음  
+        ex) Retry-After: Fri, 31 Dec 1999 23:59:59 GMT (날짜 표기)  
+            Retry-After: 120 (초단위 표기)  
+
+- 인증 헤더  
+    - Authorization : 클라이언트 인증 정보를 서버에 전달  
+        ex) Authorization: BASIC xxxxxxxxxxxxxxxxxx  
+        다양한 인증방식별(OAuth, OAuth2, SNS로그인 등)로 들어가야하는 값이 다름  
+        인증 메커니즘과는 상관없이 헤더를 제공하는 것으로 인증과 관련된 값을 줘야함.  
+    - WWW-Authentication : 리소스 접근시 필요한 인증 방법 정의  
+        401 Unauthorized 응답과 함께 사용  
+        ex) WW-Authentication: Newauth realm="apps", type=1,title="Login to \"apps\"", Basic realm="simple"  
+        -> 어떻게 인증을 해야할지를 정의해 알려줌.  
+
+- 쿠키 헤더  
+    로그인 정보나 최소한의 정보를 저장하기 위한 용도  
+    ex) set-cookie: sessionId=abcde1234; expires=Sat, 26-Dec-2020 00:00:00 GMT; path=/; domain= google.com; Secure  
+    
+    쿠키 정보는 `항상 서버에 전송`된다  
+    네트워크 `트래픽 추가 유발`되며 `최소한의 정보만 사용`(세션 id, 인증 토큰)하는게 좋다    
+    
+    서버에 전송하지 않고, 웹 브라우저 내부에 데이터를 저장하고 싶다면?  
+    [웹 스토리지(localStorage, sessionStorage) 참고](http://www.tcpschool.com/html/html5_api_webStorage)해보자  
+
+    ❗ _보안에 민감한 데이터는 저장 X (주민번호, 신용카드 번호 등등)_
+
+    - 사용처  
+        사용자 로그인 세션 관리  
+        광고 정보 트래킹
+
+    - 생명주기 (Expires, max-age)  
+        Set-Cookie: expires=Sat, 26-Dec-2020 04:39:21 GMT  
+            만료일이 되면 쿠키 삭제  
+        Set-Cookie: max-age=3600 (3600초)  
+            0이나 음수를 지정하면 쿠키 삭제  
+        세션 쿠키(session cookie): 만료 날짜를 생략하면 브라우저 종료시 까지만 유지  
+        영속 쿠키(persistent cookie): 만료 날짜를 입력하면 해당 날짜까지 유지  
+
+    - 도메인 (Domain)  
+        ex) domain=example.org  
+
+        __명시 시 명시한 문서 기준 도메인 + 서브 도메인 포함__  
+        domain=example.org를 지정해서 쿠키 생성  
+        example.org와 추가적으로 dev.example.org도 쿠키 접근가능  
+
+        __생략 시 현재 문서 기준 도메인만 적용__  
+        example.org 에서 쿠키를 생성하고 domain 지정을 생략시  
+        example.org에서만 쿠키 접근  
+        dev.example.org는 쿠키 접근안함  
+
+    - 경로 (Path)  
+    설정한 경로를 포함한 하위 경로 페이지만 쿠키 접근  
+    일반적으로 path=/ 루트로 지정  
+    ex) path=/home 지정시  
+    -> 가능 : /home , /home/level1 , /home/level2/...  
+    -> 불가능 : /other  
+    
+    - 보안 (Secure, HttpOnly, SameSite)  
+        __Secure__  
+        쿠키는 http, https를 구분하지 않고 전송  
+        Secure를 적용하면 https인 경우에만 전송  
+        __HttpOnly__  
+        XSS 공격 방지  
+        자바스크립트에서 접근 불가 (document.cookie)  
+        HTTP 전송에만 사용  
+        __SameSite__  
+        XSRF 공격 방지  
+        요청 도메인과 쿠키에 설정된 도메인이 같은 경우만 쿠키 전송  
