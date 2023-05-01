@@ -552,3 +552,213 @@ __IP + 포트번호와 웹서버 통신__
         3) 서버도 클라이언트와 연결된 상태이기 때문에 클라이언트에 FIN 플래그를 보낸다
         4) 클라이언트는 서버측의 FIN 플래그에 대한 응답을 한다.<br>
             > 이때 클라이언트는 `Time Wait 상태`를 가지는데 아직 서버로부터 전송되지 않은 패킷이 남아있을수 있기 때문에 설정된 일정시간동안은 데이터를 수신한다.
+
+### TCP의 제어기능 3가지
+위 TCP 데이터 전송과정에서 간략하게 흐름제어와 혼잡제어를 설명했다. 또 TCP에는 오류를 제어하는 기능도 있는데 차례대로 정리해 보겠습니다.
+
+- __흐름제어 (Flow Control)__
+
+    > 흐름제어에는 대표적으로 2가지 기법인 Stop and Wait , Sliding Window 가 있다.
+    - __Stop and Wait__
+
+    ![image](https://github.com/9ony/9ony/assets/97019540/f0eeef6b-d96b-4fca-a022-698d702b147c)
+
+    Stop And Wait는 데이터 요청후 ACK를 응답받는 것이고 데이터 요청한 후 일정 시간동안 ACK응답이 안오면 재요청을 하게된다.
+    Stop And Wait는 안정적인 데이터 전송이 이루어지지만 패킷 한개당 ACK 응답을 받아야 다음 패킷을 보내기 때문에 상당히 비효율적이다.
+
+    - __Sliding Window__
+
+    ![image](https://github.com/9ony/9ony/assets/97019540/72e67030-2285-42be-b7b4-6dec9ae92455)
+
+    Sliding Window는 Stop And Wait와는 다르게 초기 연결시에 송신자와 수신자가 Window Size를 서로 공유하게 된다.<br>
+    그래서 해당 사이즈만큼의 세그먼트는 응답코드를 받지않아도 미리 송신할 수 있게되고,<br>
+    수신측은 해당 송신측에 자신이 수용할 수 있는 세그먼트크기 (Window Size)를 지속적으로 송신측에 전달한다.<br>
+    
+    > 그림에 rwnd 라고 있는데 추가적으로 awnd 와 cwnd 라는 크기 관계식이 존재한다.<br>
+    rwnd 수신측 가용가능한 버퍼용량이고 cwnd는 네트워크상에서 혼잡도를 고려하여 설정한 윈도우 크기다.<br>
+    awnd는 송신측에서 전송가능한 최대 윈도우 크기이며 이는 rwnd,cwnd중 작은값으로 설정된다. min(rwnd,cwnd)
+    
+> 이처럼 TCP에서는 수신 측이 수용 가능한 데이터 양을 나타내는 Window Size를 사용하여 흐름 제어를 수행한다.<br>
+수신 측은 Window Size 값을 송신 측에게 전달하여, 송신 측은 해당 값에 따라 데이터를 전송하는 속도를 조절하고<br>
+수신 측의 버퍼 용량과 수신 가능한 처리 속도에 따라 Window Size가 동적으로 조정되어 데이터의 효율적인 전송이 이루어진다.<br>
+
+- __혼잡제어 (Congestion Control)__
+
+    송신측과 수신측이 데이터를 주고 받을때 중간에 여러 네트워크 망(라우터)을 거치게 된다.<br>
+    데이터 송신시에 특정 라우터에 패킷이 과도하게 몰리게 된다면 라우터의 처리속도에 비해 라우터 버퍼의 크기는 유한하기 때문에 패킷이 쌓이게 되면서 더이상 패킷이 들어올 수 없어서 패킷이 유실된다.<br> 
+    또 이 문제를 해결하기위해 라우터의 버퍼 용량을 늘리게 된다면 그만큼 패킷이 머무는 시간이 증가할수 있어서 전송이 지연되며 타임아웃 시간보다 늘어나게되면 계속해서 재전송 요청을 하기때문에 패킷량이 늘어나 악순환이 반복된다.<br>
+    이에 따라 윈도우 사이즈를 조정해야 되는데 이를 혼잡제어라 한다.<br>
+    흐름제어는 송신자와 수신자의 전송속도 즉, 윈도우 사이즈를 다뤗다면 혼잡제어는 보다 넓은 전송문제를 관리하게 된다.
+
+    > 혼잡을 제어하는 알고리즘에는 수많은 알고리즘이 존재하는데 기본적인 AIMD , Slow Start , Congestion Avoidance , Fast Retrasmit , Fast Recovery 알고리즘과 현재 대표적으로 사용되고 있는 혼잡제어 알고리즘인 TCP Cubic , TCP New Reno이 있다.<br>
+    네트워크 상황과 요구사항에 따라 다양한 알고리즘이 선택적으로 사용된다.
+
+    - AIMD (Additive Increase & Multiplicative Decrease)
+
+    > AIMD 는 직역하면 합증가 곱감소이다. RTT(Round Transmit Time)당 Congestion Window를 1씩 증가하고 만약 혼잡이 발생하면 cwnd*=0.5를 하여 반으로 줄이는 것이다.<br>
+
+    __AIMD 그래프__<br>
+    ![image](https://github.com/9ony/9ony/assets/97019540/f839d0fd-ca5c-4222-a7b1-2092685eaa91)
+
+    단점으로는 통신속도 즉 window size가 느리게 증가함.
+
+    - Slow Start
+
+    > Slow Start는 느린시작인데 cwnd값을 1부터 시작하는것이다. 하지만 증가폭은 RTT당 cwnd값을 두배로 증가되면서 cwnd 사이즈를 빠르게 증가시킨다. 이는 AIDM의 윈도우 크기가 느리게 증가하는 것을 보완한 알고리즘이다.<br>
+    수신 받은 ACK 당 cwnd = cwnd + 1MSS<br>
+    즉, 송신자가 cwnd가 2일때 2개의 세그먼트를 보내면 수신자가 2개의 세그먼트를받으니 +2 증가되는 것이다.<br> 그럼 cwnd는 4가되고 그다음에 4개의 세그먼트를 전송하면 세그먼트 개수만큼 증가하니 +4가 되어 8이 되므로 2배씩 증가하게 된다.<br>
+
+    __Slow Start 그래프__<br>
+    ![image](https://github.com/9ony/9ony/assets/97019540/f4b7ae25-c9eb-4c42-937b-035c7825b555)
+
+    ssthresh란 slow start시에 cwnd값이 지수증가하게 되는데 이때 특정 수치에 도달하게되면 cwnd가 1이된다 이때 이 특정 수치를 ssthresh라 한다.<br>
+    Slow Start는 ssthresh까지 cwnd가 지수증가하는 것이라고 볼 수 있다.
+
+    - Congestion Avoidance
+
+    > Congestion Avoidance란 slow start 시에 ssthresh에 도달하면 cwnd를 1로 설정하지 않고 RTT마다 cwnd가 1씩 천천히 선형적으로 증가시키는 것이다.<br>
+    * 이는 TCP Reno 알고리즘 기준이고 다른 알고리즘은 증가량이 다르다고 한다.<br>
+
+    __Congestion Avoidance 그래프__<br>
+    ![image](https://github.com/9ony/9ony/assets/97019540/b752b33c-4777-4a72-8dfc-47eb83886034)
+
+    그림과 같이 slow start가 ssthresh값이 8인 시점에 Congestion Avoidance(혼잡회피) 단계가 진행되어 cwnd값이 cwnd = cwnd + MSS * (MSS/cwnd)로 증가 하게 됨. <br>
+    해당 식이 의미하는 것은 MSS는 세그먼트의 데이터 최대 크기인데 1Byte이라고 가정하자.<br>
+    그러면 cwnd가 8이니까 1*(1/8)= 0.125씩 증가하게 되는데 cwnd가 8Byte이고 세그먼트 크기가 1Byte이니까 응답코드가 RTT당 8개 올것이므로 결과적으로 RTT당 1이 증가하게된다. (제가 이해한 내용입니다.)
+
+    - Fast Retransmit<br>
+
+    > Fast Restransmit는 빠른 재전송 기법이다.<br> 
+    우선 빠른 재전송을 알아보기전에 RTO에 대해 간단하게 집고 넘어가겠다.<br>
+
+    __RTO란?__<br>
+    Retransmisstion TimeOut으로 재전송 타임을 설정한 시간 값이라 보면 된다.(InitRTO = 운영체제 기본값 설정)<br>
+    해당 시간을 초과하면 패킷이 손실됬다고 판단하여 재전송을 요청한다.
+
+    ![image](https://github.com/9ony/9ony/assets/97019540/e2decbcb-5a2f-4c3d-9350-a3bb932b8369)
+
+    > 빠른 재전송은 재전송을 하기위해 RTO 시간동안 기다리지 않고 중복 ACK가 3번이상 온다면 바로 재전송 요청을 보내는 방식이다. 
+    즉 TimeOut시간에 의존하지 않고 중복 ACK응답이 3개가 오면 재전송을 보내는 것이다.
+    
+    > __추가 설명!__ <br>
+    Seg3 or Seg6 이라고 표시한 이유는 나중에 오류제어 방식이 어떤 방식인지에 따라 달라진다 (GBN or SR)
+
+    - Fast Recovery<br>
+    > Fast Retransmit 후 Slow Start 아닌 혼잡회피상태에서 전송하는 기법이다.<br>
+    여러 세그먼트 손실 시 세그먼트 하나씩 복구되므로 모든 패킷 ACK 수신까지 대기한다.
+
+    ![image](https://github.com/9ony/9ony/assets/97019540/53c3f280-73b3-4cc4-b13d-168dd42262be)
+
+    그림과 같이 Fast Recovery는 3개의 ACK가 중복되서 수신됬을경우 cwnd값을 1로 줄이지 않고 반으로 줄여서 바로 Congestion Avoidance상태로 cwnd를 1씩 증가시킨다.<br>
+    더 구체적으로는 Fast Recovery 상태에 들어가게되면 ssthresh값은 반으로 줄어들고 cwnd값은 반으로 줄어든 ssthresh값 + 3을 더해주는데 3을 더해주는 이유는 `중복된 3개의 ACK`의 영향을 고려한 값이라고 보면된다.
+    <br>
+    중복된 3개의 ACK를 수신하여 Fast Recovery 상태에서 그전에 보낸 데이터에 대한 중복 응답이 3개 보다 많을 경우도 있을것이다. 그러면 초과된 중복 ACK당 cwnd가 1씩 증가한다.<br>
+    초과된 중복 ACK를 받은 후에는 cwnd를 1씩 증가시키며 세그먼트를 다시 전송한다.<br> 
+
+    ![image](https://github.com/9ony/9ony/assets/97019540/38b71651-2e11-4917-adde-0f05ea64d0e9)
+    
+    __Fast Recovery 시나리오 설명__<br>
+    송신자는 24번 세그먼트 부터 33번 세그먼트까지 보냈는데 중간에 28번 세그먼트가 손실됬다.<br>
+    수신자 입장에서는 27번까지 세그먼트를 정상적으로 받은 후에 데이터를 처리하여 ACK를 보낸다.<br>
+    송신자는 4MSS크기의 버퍼를 확보했으니 그다음 34~37까지 세그먼트를 전송한다<br>
+    수신자는 28번 세그먼트가 손실되서 수신받지 못했고 그 이후 29,30, 31번까지 세그먼트가오면 순서가 맞지않기 때문에 중복된 28번의 ACK를 3번 보낼것이고 송신자가 Fast Retransmission을 수행하여 다시 28번 세그먼를 재전송한다.<br>
+    이 시점에 중복된 3개의 ACK가 왔으니 송신자는 ssthresh를 cwnd/2값으로 줄이고 cwnd는 반으로 줄여진 ssthresh값에 3을 더한 8로 설정된다.<br>
+    이후 32,33에 대한 응답이 도착하여 중복된 ACK 2개가 더 도착하면서 cwnd가 ACK당 1씩오르게 되니 cwnd는 10으로 된다.(위 상황과 같이 버퍼크기를 확보했으니 38,39 세그먼트도 전송됨)<br>
+    그럼 수신자는 28번 세그먼트까지 정상적으로 수신받아서 현재 37번 세그먼트까지 전송받게 되어 38ACK를 보내게 된다.<br>
+    송신자는 드디어 새로운 ACK (NEW ACK)를 전송받았기 때문에 cwnd가 ssthresh값인 5로 설정되어 다시 혼잡회피상태가 된다.
+
+    [Fast Recovery 참고 링크](https://ai-com.tistory.com/entry/%EB%84%A4%ED%8A%B8%EC%9B%8C%ED%81%AC-TCP-Congestion-Control-2-%EA%B8%B0%EB%B3%B8-%EB%8F%99%EC%9E%91)
+
+    [Fast Recovery cwnd변화 세그먼트흐름 그림 참고](https://www.isi.edu/nsnam/DIRECTED_RESEARCH/DR_WANIDA/DR/JavisInActionFastRecoveryFrame.html)
+    
+- __오류제어 (Error Control)__
+
+> TCP 오류제어는 수신자가 세그먼트 전송과정에서 중간에 손실됬거나 변경된 사항이 없는지 검출하고 재전송하는 역할을 한다.
+
+  - __오류 검출__<br>
+
+  > 우선 오류를 처리하기 전에 오류가 발생했는지 여부부터 확인해야 한다.<br>
+  데이터 무결성을 검사하기 위해 대표적으로 CRC(Cycle Redundancy Check)가 사용되고 그 외로 CheckSum 와 Parity Bit를 이용한 방식이 존재한다.<br>
+
+    - __Parity Bit__
+
+        패리티 비트는 전송하고자 하는 데이터(2진수)에 1을 더하여 전송하는 방법으로 2가지 방법이 있는데 짝수 패리티 비트와 홀수 패리티 비트이다. <br>짝수 패리티 비트 ( Even Parity Bit)는 해당 데이터가 만약 0110001을 보낸다하자 그러면 1의 개수가 5개이다 그러면 패리티 비트 1이 추가되어 01100011이 되어 1의 개수가 짝수개가 되는 것이다. <br>
+
+        ![image](https://github.com/9ony/9ony/assets/97019540/4e726441-1b14-4485-82a2-556cf130e7e7)
+
+        위 그림 처럼 만약 중간에 데이터가 변경되어서 4번째 비트가 0이아닌 1이되어 전송되었다면 1의 개수가 짝수개가 아니므로 해당 데이터에 문제가 있음을 감지 할 수 있다.<br>
+
+        ![image](https://github.com/9ony/9ony/assets/97019540/d5864ce2-0247-4a08-b854-ee0994f48cb3)
+
+        하지만 패리티비트의 단점으로는 위 그림처럼 데이터에 2개의 비트가 변경되었을지 오류 검출을 못한다.<br>
+
+        홀수 패리티 비트 (Odd Parity Bit)도 마찬가지로 홀수로 맞추는 것이므로 기존에 3개의 1이 있었으니 패리티 비트는 0이 된다. 수신자는 이 패리티 비트를 확인하여 데이터가 오류가 있는지 검출할 수 있다.
+
+    - __Check Sum__
+
+        parity bit의 오류검출 능력을 향상시키기 위해서 개발된 방법
+
+        1.TCP 세그먼트 데이터에 패딩을 추가하여 데이터 길이가 16비트(2바이트)의 배수가 되도록 맞춤
+
+        2.TCP 체크섬 필드를 0으로 설정
+
+        3.TCP 세그먼트 데이터와 TCP 헤더를 16비트단위로 나누어서 모두 더한다.
+
+        4.만약 덧셈 연산 중에 16비트를 초과하는 경우에는 초과한 비트를 다시 더해줌
+
+        5.계산된 결과에 1의 보수 (비트 반전).
+
+        6.계산된 값 = 체크섬
+
+        [체크섬 계산 방법](https://securitynewsteam.tistory.com/entry/TCP%EC%B2%B4%ED%81%AC%EC%84%AC-%EA%B3%84%EC%82%B0%EB%B0%A9%EB%B2%95)
+
+        하지만 체크섬도 발생하는 모든 오류를 검출할 수는 없다. 예를 들어 04 bb 25 e0 7a 라는 5byte데이터를 보냈다고 가정하자. 하지만 송신측에서 03 bc 25 e0 7a로 받았다. 첫번째와 두번째바이트가 -1 , +1씩 되었어도 결국 합은 같기 때문에 오류를 검출하는데 문제가 생긴다.
+
+    - __CRC__
+
+        입력 데이터에 대해 다항식 연산을 수행하여 체크섬 값을 계산  (보편적으로 가장 많이 쓰인다.)
+        <br>
+
+        CRC는 다항식으로 표현되는 제어 비트를 사용하여 입력 데이터에 추가되는 오류를 감지<br>
+        송신자는 입력 데이터와 제어 비트를 이용하여 체크섬 값을 계산하여 전송한다.수신자는 동일한 다항식을 이용하여 수신된 데이터에 대한 체크섬 값을 계산하고, 송신자가 전송한 체크섬 값과 비교
+        체크섬 값이 일치하지 않는다면 데이터에 오류가 있는 것으로 간주한다.<br>
+
+        체크섬에 대해 깊게 기술하는것은 다음에...
+
+        [CRC란?](https://depotceffio.tistory.com/entry/CRC%EC%9D%98-%EB%9C%BB%EA%B3%BC-%EA%B3%84%EC%82%B0-%EB%B0%A9%EB%B2%95)
+
+  - __재전송 기반__
+
+  ARQ 방식 사용 ( GBN,SR,Stop and Wait 등이 있고 아래서 설명하겠습니다.)<br>
+  중복 ACK를 통한 패킷 손실 감지 후 재전송<br>
+  타임아웃 기반으로 해당 데이터에 대한 ACK를 받지 못하면 데이터가 정상적으로 전송되지 않았다 판단 후 재전송<br>
+  NACK 부정응답번호로 인한 재전송<br>
+  즉, 수신측이 송신측에게 재전송을 요청함 (수신자 피드백 방식)<br>
+
+  > 재전송 기반의 에러제어 방식도 결국 위의 에러검출 또는 타임아웃을 거친 후 진행된다. ACK를 보낼지 NACK를 보낼지도 결국 에러검출 과정을 거친후 데이터가 정상적이지 않으면 NACK를 보내서 해당 데이터를 재전송 받는 것이다.<br>
+
+    - __Go Back N ARQ__<br>
+        한번에 여러 개를 보낸후 하나의 긍정 확인응답(ACK)을 받고 후속 데이터 전송<br>
+        NAK(부정 확인응답)를 수신할 때까지 계속하여 데이터를 송신<br>
+        슬라이딩 윈도우 (Sliding Window) 방식 이라고도 불리움<br>
+        분실 시 분실된 시점부터 다시 데이터를 보냄<br>
+
+        ex) 만약 1~6개의 패킷을 보냈는데 중간에 3번 패킷이 손실되서 전송이 안됬다면 3456을 다시보낸다.
+
+    - __Selective Repeat ARQ__<br>
+        오류가 발생된(NACK) 프레임 이후 또는 오류 발생된 프레임 만을 재전송 (GBN의 단점 보완)<br>
+        오류가 발생된 데이터만 받기 때문에 데이터 순서를 위해
+            재정렬을 수행해야 하며, 별도의 버퍼를 필요<br>
+            즉, 구조가 복잡하고 GBN보다 비용이 비싸다.<br>
+
+        ex) Go Back N과 다르게 만약 중간 3번패킷이 손실됬다면 3번패킷만 재전송한다.<br>
+        이렇게 되면 124563의 순서로 도착하기 때문에 정렬과정이 필요한 것이다.<br>
+
+    - __Stop and Wait ARQ__
+
+        위 흐름제어에서 설명하여 생략. 해당 흐름제어 자체가 에러제어도 같이한다고 보면됨.
+
+  __🎇 Go-Back-N ARQ와 Selective Repeat ARQ가 TCP에서 주로 사용된다!!__
+  
+   http://www.ktword.co.kr/test/view/view.php?m_temp1=1299
+
